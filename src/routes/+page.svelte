@@ -8,6 +8,9 @@
 	let margin = $state(4);
 	let scale = $state(8);
 	let preview = $derived(value ? QRCode.toDataURL(value, { margin, scale }) : null);
+	let downloadMenuOpen = $state(false);
+	let downloadToggle = $state<HTMLButtonElement>();
+	let downloadMenu = $state<HTMLDivElement>();
 	let toast = $state<{ message: string; success: boolean } | null>(null);
 
 	function readSetting(key: string, min: number, max: number, fallback: number) {
@@ -42,6 +45,28 @@
 		}
 	});
 
+	async function downloadSvg() {
+		downloadMenuOpen = false;
+		downloadToggle?.focus();
+		try {
+			const width = (QRCode.create(value).modules.size + 2 * margin) * scale;
+			const svg = await QRCode.toString(value, { type: 'svg', margin, width });
+			const link = document.createElement('a');
+			link.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+			link.download = 'qr-code.svg';
+			link.click();
+		} catch {
+			toast = { message: 'Could not download the SVG.', success: false };
+		}
+	}
+
+	function dismissDownloadMenu(event: Event) {
+		const target = event.target as Node;
+		if (!downloadToggle?.contains(target) && !downloadMenu?.contains(target)) {
+			downloadMenuOpen = false;
+		}
+	}
+
 	async function copyImage(png: string) {
 		const copiedPreview = preview;
 		try {
@@ -55,6 +80,17 @@
 		}
 	}
 </script>
+
+<svelte:window
+	onpointerdown={dismissDownloadMenu}
+	onfocusin={dismissDownloadMenu}
+	onkeydown={(event) => {
+		if (event.key === 'Escape' && downloadMenuOpen) {
+			downloadMenuOpen = false;
+			downloadToggle?.focus();
+		}
+	}}
+/>
 
 <svelte:head>
 	<title>QR generator</title>
@@ -143,6 +179,25 @@
 						</svg>
 						Download
 					</a>
+					<button
+						class="btn dropdown-toggle dropdown-toggle-split"
+						type="button"
+						aria-label="Download options"
+						aria-expanded={downloadMenuOpen}
+						aria-controls="download-options"
+						bind:this={downloadToggle}
+						onclick={() => (downloadMenuOpen = !downloadMenuOpen)}
+					></button>
+					<div
+						bind:this={downloadMenu}
+						id="download-options"
+						class="dropdown-menu end-0 top-100"
+						class:show={downloadMenuOpen}
+					>
+						<button class="dropdown-item" type="button" onclick={downloadSvg}>
+							Download SVG
+						</button>
+					</div>
 				</div>
 			</div>
 		{:catch}
