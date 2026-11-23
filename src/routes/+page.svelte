@@ -5,7 +5,7 @@
 
 	const storageKey = 'qr.input';
 	let value = $state('');
-	let margin = $state(4);
+	let margin = $state(1);
 	let scale = $state(8);
 	let preview = $derived(value ? QRCode.toDataURL(value, { margin, scale }) : null);
 	let downloadMenuOpen = $state(false);
